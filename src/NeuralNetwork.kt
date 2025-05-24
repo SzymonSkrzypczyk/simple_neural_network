@@ -5,6 +5,8 @@ class NeuralNetwork(
     private val activationFunction: (Double) -> Double = ::sigmoid
 ) {
     private val layers: MutableList<MutableList<Neuron>> = mutableListOf()
+    val trainErrors: MutableList<Double> = mutableListOf()
+    var validationErrors: MutableList<Double> = mutableListOf()
 
     init {
         var previousSize = inputSize
@@ -62,11 +64,30 @@ class NeuralNetwork(
         }
     }
 
-    fun train(inputs: List<MutableList<Double>>, targets: List<MutableList<Double>>, epochs: Int, learningRate: Double) {
+    fun train(
+        inputs: List<MutableList<Double>>,
+        targets: List<MutableList<Double>>,
+        epochs: Int, learningRate: Double,
+        validationInputs: List<MutableList<Double>>? = null,
+        validationTargets: List<MutableList<Double>>? = null) {
         for (epoch in 0 until epochs) {
             for (i in inputs.indices) {
                 feedForward(inputs[i])
                 backpropagate(targets[i], learningRate)
+                val output = layers.last().map { it.output }
+                val error = Utils.MeanSquaredError(targets[i], output as MutableList<Double>)
+                trainErrors.add(error)
+            }
+
+            if (validationInputs != null && validationTargets != null) {
+                var valMSE = 0.0
+                for (i in validationInputs.indices) {
+                    val output = feedForward(validationInputs[i])
+                    val error = Utils.MeanSquaredError(validationTargets[i], output)
+                    valMSE += error
+                }
+                // divided to keep it consistent with training error
+                validationErrors.add(valMSE / validationInputs.size)
             }
         }
     }
